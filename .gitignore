@@ -1,1 +1,14 @@
-/Test data/
+.idea
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+/test_data/
+/venv/
+/utils/NoisyVSTissueModel.h5
