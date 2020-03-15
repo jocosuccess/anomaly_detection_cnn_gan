@@ -8,15 +8,16 @@ Created on Sun Mar  8 10:40:52 2020
 import csv
 import numpy as np
 import os
-from src import anogan
+import pandas as pd
 
+from src import anogan
 from keras.models import load_model
 from keras.preprocessing import image
 from keras.preprocessing.image import img_to_array, load_img
 from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot
-from settings import MODEL_PATH, NEGATIVE_DIR, POSITIVE_DIR, MAX_GAN_LOSS_MSE, MIN_GAN_LOSS_MSE, LOCAL, \
-    TEMP_DIR, ROC_CURVE_PATH, OPT_THRESH, OPT_THRESH_PATH, OPT_RESULT_CSV
+from settings import MODEL_PATH, POSITIVE_DIR, MAX_GAN_LOSS_MSE, MIN_GAN_LOSS_MSE, LOCAL, \
+    TEMP_DIR, ROC_CURVE_PATH, OPT_THRESH, OPT_THRESH_PATH, OPT_RESULT_CSV, SUB_NEGATIVE_DIR, PROCESS_CSV
 from utils.folder_file_manager import save_file
 
 
@@ -51,9 +52,18 @@ class WholePipeline:
         self.thresholds_array = []
         self.output_list = []
 
-        self.total_positives = len([name for name in os.listdir(POSITIVE_DIR) if os.path.isfile(name)])
-        self.total_negatives = len([name for name in os.listdir(NEGATIVE_DIR) if os.path.isfile(name)])
+        self.total_positives = len([name for name in os.listdir(POSITIVE_DIR)])
+        self.total_negatives = len([name for name in os.listdir(SUB_NEGATIVE_DIR)])
         self.y_test = [0] * self.total_negatives + [1] * self.total_positives
+
+        if not os.path.exists(PROCESS_CSV):
+            open(PROCESS_CSV, 'w')
+
+        try:
+            df = pd.read_csv(PROCESS_CSV, header=None)
+            self.processed_thresh = df.iloc[:, 0].values.tolist()
+        except Exception as e:
+            self.processed_thresh = []
 
     @staticmethod
     def plot_roc_curve(f_array, t_array):
@@ -119,7 +129,10 @@ class WholePipeline:
 
         for thresh_val in range(MIN_GAN_LOSS_MSE, MAX_GAN_LOSS_MSE):  # thresholds should be in descending order
             # start with the negatives first because we put thier labels first in the y_test
-            self.get_fpr_tpr(dir_path=NEGATIVE_DIR, thresh=thresh_val)
+            if thresh_val in self.processed_thresh:
+                continue
+
+            self.get_fpr_tpr(dir_path=SUB_NEGATIVE_DIR, thresh=thresh_val)
             self.get_fpr_tpr(dir_path=POSITIVE_DIR, thresh=thresh_val)
 
             # save the threshold of this iteration
@@ -134,23 +147,17 @@ class WholePipeline:
             tp = conf_matrix[1, 1]
             tpr = tp / self.total_positives
             self.tpr_array.append(tpr)
+            pd.DataFrame([thresh_val, fpr, tpr]).T.to_csv(PROCESS_CSV, index=False, header=False, mode="a")
 
         if LOCAL:
-            th_str = ""
-            f_str = ""
-            t_str = ""
-            threshold_path = os.path.join(TEMP_DIR, 'threshold.txt')
-            fpr_path = os.path.join(TEMP_DIR, 'fpr.txt')
-            tpr_path = os.path.join(TEMP_DIR, 'tpr.txt')
 
-            for th, f, t in zip(self.thresholds_array, self.fpr_array, self.tpr_array):
-                th_str += str(th) + "\n"
-                f_str += str(f) + "\n"
-                t_str += str(t) + "\n"
+            threshold_path = os.path.join(TEMP_DIR, 'threshold.csv')
+            fpr_path = os.path.join(TEMP_DIR, 'fpr.csv')
+            tpr_path = os.path.join(TEMP_DIR, 'tpr.csv')
 
-            save_file(content=th_str, filename=threshold_path, method='w')
-            save_file(content=f_str, filename=fpr_path, method='w')
-            save_file(content=t_str, filename=tpr_path, method='w')
+            pd.DataFrame(self.thresholds_array).to_csv(threshold_path, index=False, header=False)
+            pd.DataFrame(self.fpr_array).to_csv(fpr_path, index=False, header=False)
+            pd.DataFrame(self.tpr_array).to_csv(tpr_path, index=False, header=False)
 
         self.plot_roc_curve(f_array=self.fpr_array, t_array=self.tpr_array)
 
