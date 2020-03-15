@@ -9,4 +9,7 @@ if __name__ == '__main__':
     opt_thresh_value = load_text(filename=OPT_THRESH_PATH)
 
     whole_pipeline.collect_fpr_tpr_all_thresh()
-    whole_pipeline.get_fpr_tpr(dir_path=TEST_DATA_DIR, thresh=int(opt_thresh_value), opt_thresh=True)
+    if opt_thresh_value != "":
+        whole_pipeline.get_fpr_tpr(dir_path=TEST_DATA_DIR, thresh=float(opt_thresh_value), opt_thresh=True)
+    else:
+        print("There is no optimum thresh value")

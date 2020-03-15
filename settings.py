@@ -8,8 +8,7 @@ WEIGHTS_DIR = make_directory_if_not_exists(os.path.join(CUR_DIR, 'utils', 'weigh
 TEST_DATA_DIR = os.path.join(CUR_DIR, 'test_data')
 POSITIVE_DIR = os.path.join(TEST_DATA_DIR, 'positives')
 NEGATIVE_DIR = os.path.join(TEST_DATA_DIR, 'HealthyAll')
-SUB_NEGATIVE_DIR = os.path.join(TEST_DATA_DIR, 'sub_healthy')
-HEALTHY_DIR = "/media/mensa/Entertainment/DemoTest/HealthyAll"
+SUB_NEGATIVE_DIR = os.path.join(CUR_DIR, 'sub_healthy')
 
 ROC_CURVE_PATH = os.path.join(IMAGE_RESULT_DIR, 'roc_curve.png')
 MODEL_PATH = os.path.join(CUR_DIR, 'utils', 'NoisyVSTissueModel.h5')

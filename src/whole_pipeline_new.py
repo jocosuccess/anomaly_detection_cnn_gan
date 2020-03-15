@@ -62,8 +62,12 @@ class WholePipeline:
         try:
             df = pd.read_csv(PROCESS_CSV, header=None)
             self.processed_thresh = df.iloc[:, 0].values.tolist()
+            self.thresholds_array = self.processed_thresh
+            self.fpr_array = df.iloc[:, 1].values.tolist()
+            self.tpr_array = df.iloc[:, 2].values.tolist()
         except Exception as e:
             self.processed_thresh = []
+            print(e)
 
     @staticmethod
     def plot_roc_curve(f_array, t_array):
@@ -127,7 +131,7 @@ class WholePipeline:
 
     def collect_fpr_tpr_all_thresh(self):
 
-        for thresh_val in range(MIN_GAN_LOSS_MSE, MAX_GAN_LOSS_MSE):  # thresholds should be in descending order
+        for thresh_val in range(MIN_GAN_LOSS_MSE, MAX_GAN_LOSS_MSE + 1):  # thresholds should be in descending order
             # start with the negatives first because we put thier labels first in the y_test
             if thresh_val in self.processed_thresh:
                 continue
@@ -148,6 +152,7 @@ class WholePipeline:
             tpr = tp / self.total_positives
             self.tpr_array.append(tpr)
             pd.DataFrame([thresh_val, fpr, tpr]).T.to_csv(PROCESS_CSV, index=False, header=False, mode="a")
+            self.y_prediction.clear()
 
         if LOCAL:
 
@@ -159,12 +164,13 @@ class WholePipeline:
             pd.DataFrame(self.fpr_array).to_csv(fpr_path, index=False, header=False)
             pd.DataFrame(self.tpr_array).to_csv(tpr_path, index=False, header=False)
 
+        calculate_optimum_threshold(f_array=self.fpr_array, t_array=self.tpr_array, thresh_array=self.thresholds_array)
         self.plot_roc_curve(f_array=self.fpr_array, t_array=self.tpr_array)
 
 
 def calculate_optimum_threshold(f_array, t_array, thresh_array):
 
-    opt_index = 0
+    opt_index = None
     diff = abs(f_array[0] - OPT_THRESH)
     for i, f_value in enumerate(f_array):
         if f_value > OPT_THRESH:
@@ -173,17 +179,17 @@ def calculate_optimum_threshold(f_array, t_array, thresh_array):
             opt_index = i
             diff = abs(f_value - OPT_THRESH)
 
-    opt_fpr = f_array[opt_index]
-    opt_thresh = thresh_array[opt_index]
-    opt_tpr = t_array[opt_index]
+    if opt_index is not None:
 
-    print("Optimum Threshold for test data: ", opt_thresh)
-    print("test_data FPR: ", opt_fpr)
-    print("test_data TPR: ", opt_tpr)
+        opt_fpr = f_array[opt_index]
+        opt_thresh = thresh_array[opt_index]
+        opt_tpr = t_array[opt_index]
 
-    save_file(content=opt_thresh, filename=OPT_THRESH_PATH, method='w')
+        print("Optimum Threshold for test data: ", opt_thresh)
+        print("test_data FPR: ", opt_fpr)
+        print("test_data TPR: ", opt_tpr)
 
-    return opt_thresh, opt_fpr, opt_tpr
+        save_file(content=str(opt_thresh), filename=OPT_THRESH_PATH, method='w')
 
 
 def mse(image_a, image_b):
