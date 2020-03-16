@@ -11,7 +11,7 @@ NEGATIVE_DIR = os.path.join(TEST_DATA_DIR, 'HealthyAll')
 SUB_NEGATIVE_DIR = os.path.join(CUR_DIR, 'sub_healthy')
 
 ROC_CURVE_PATH = os.path.join(IMAGE_RESULT_DIR, 'roc_curve.png')
-MODEL_PATH = os.path.join(CUR_DIR, 'utils', 'NoisyVSTissueModel.h5')
+NOISY_VS_TISSUE_MODEL_PATH = os.path.join(CUR_DIR, 'utils', 'NoisyVSTissueModel.h5')
 GENERATOR_WEIGHT = os.path.join(WEIGHTS_DIR, 'generator_127.h5')
 DISCRIMINATOR_WEIGHT = os.path.join(WEIGHTS_DIR, 'discriminator_127.h5')
 OPT_THRESH_PATH = os.path.join(IMAGE_RESULT_DIR, 'opt_threshold.txt')

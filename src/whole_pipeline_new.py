@@ -5,7 +5,6 @@ Created on Sun Mar  8 10:40:52 2020
 @author: pc
 """
 
-import csv
 import numpy as np
 import os
 import pandas as pd
@@ -16,7 +15,7 @@ from keras.preprocessing import image
 from keras.preprocessing.image import img_to_array, load_img
 from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot
-from settings import MODEL_PATH, POSITIVE_DIR, MAX_GAN_LOSS_MSE, MIN_GAN_LOSS_MSE, LOCAL, \
+from settings import NOISY_VS_TISSUE_MODEL_PATH, POSITIVE_DIR, MAX_GAN_LOSS_MSE, MIN_GAN_LOSS_MSE, LOCAL, \
     TEMP_DIR, ROC_CURVE_PATH, OPT_THRESH, OPT_THRESH_PATH, OPT_RESULT_CSV, SUB_NEGATIVE_DIR, PROCESS_CSV
 from utils.folder_file_manager import save_file
 
@@ -40,7 +39,7 @@ class WholePipeline:
     """
 
     def __init__(self):
-        self.inception = load_model(MODEL_PATH)
+        self.inception = load_model(NOISY_VS_TISSUE_MODEL_PATH)
         self.model = anogan.anomaly_detector(g=None, d=None)
         self.intermediate_model = anogan.feature_extractor(None)
 
@@ -50,7 +49,9 @@ class WholePipeline:
         self.fpr_array = []
         self.tpr_array = []
         self.thresholds_array = []
-        self.output_list = []
+        self.frame_names = []
+        self.errors = []
+        self.rets = []
 
         self.total_positives = len([name for name in os.listdir(POSITIVE_DIR)])
         self.total_negatives = len([name for name in os.listdir(SUB_NEGATIVE_DIR)])
@@ -98,7 +99,10 @@ class WholePipeline:
                 # save the (0) label immediately, else, let the GAN anomaly detection model to determine
                 if label == 0:
                     if opt_thresh:
-                        self.output_list.append([file, thresh - 1, 'Normal'])
+                        self.frame_names.append(file)
+                        self.errors.append(thresh - 1)
+                        self.rets.append('Normal')
+
                     else:
                         self.y_prediction.append(0)
                 else:
@@ -114,13 +118,14 @@ class WholePipeline:
                     if opt_thresh:
 
                         if err < thresh and predicts[0, label] > 0.95:
-                            self.output_list.append([file, err, 'Normal'])
-                        else:
-                            self.output_list.append([file, err, 'Anomaly'])
+                            self.frame_names.append(file)
+                            self.errors.append(err)
+                            self.rets.append('Normal')
 
-                        with open(OPT_RESULT_CSV, 'w', newline='') as my_file:
-                            wr = csv.writer(my_file, quoting=csv.QUOTE_ALL)
-                            wr.writerow(self.output_list)
+                        else:
+                            self.frame_names.append(file)
+                            self.errors.append(err)
+                            self.rets.append('Anomaly')
 
                     else:
 
@@ -128,6 +133,11 @@ class WholePipeline:
                             self.y_prediction.append(0)
                         else:
                             self.y_prediction.append(1)
+
+        if opt_thresh:
+            df = pd.DataFrame(list(zip(self.frame_names, self.errors, self.rets)),
+                              columns=["FrameName", "Error", "Ret"])
+            df.to_csv(OPT_RESULT_CSV, index=True, header=True, mode="w")
 
     def collect_fpr_tpr_all_thresh(self):
 
